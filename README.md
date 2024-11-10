@@ -1,9 +1,17 @@
 # Domain Radar
 
-Sourced from [Cloudflare](https://radar.cloudflare.com/domains).
+Sourced from [Cloudflare](https://radar.cloudflare.com/domains). Data last updated: 2024/11/04.
 
-List of the most popular 1 million domains.
-Cloudflare generates a lists of the top
+## Usage
+0. (Optional) Download the lists from [Cloudflare](https://radar.cloudflare.com/domains), copy into `data/`, and rename them into format `top-<number>-domains.csv`.
+1. Run `go run main.go`.
+2. View result in `result.txt`
+
+## About
+
+Lists of the most popular 1 million domains.
+
+Cloudflare generates a lists of the top:
 * 200
 * 500
 * 1,000
@@ -18,7 +26,7 @@ Cloudflare generates a lists of the top
 * 1,000,000 domains.
 
 This program collates all the lists, and arranges
-them into groups
+them into groups of 
 * 1 - 200
 * 201 - 500
 * 501 - 1,000
