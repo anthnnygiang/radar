@@ -1,5 +1,7 @@
 # Domain Radar
 
+Lists the most popular 1 million domains.
+
 Sourced from [Cloudflare](https://radar.cloudflare.com/domains). Data last updated: 2024/11/04.
 
 ## Usage
@@ -8,8 +10,6 @@ Sourced from [Cloudflare](https://radar.cloudflare.com/domains). Data last updat
 2. View result in `result.txt`
 
 ## About
-
-Lists of the most popular 1 million domains.
 
 Cloudflare generates a lists of the top:
 * 200
