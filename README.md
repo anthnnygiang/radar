@@ -1,7 +1,9 @@
 # Domain Radar
 
+Sourced from [Cloudflare](https://radar.cloudflare.com/domains).
+
 List of the most popular 1 million domains.
-Cloudflare generated a lists of the top
+Cloudflare generates a lists of the top
 * 200
 * 500
 * 1,000
