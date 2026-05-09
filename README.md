@@ -1,6 +1,8 @@
 # Domain Radar
 
 ## Usage
+1. Add `CLOUDFLARE_API_TOKEN=abcd...` to `.env`
+2. `go run main.go`
 
 ## About
 
