@@ -1,59 +1,93 @@
 package main
 
 import (
-	"encoding/csv"
+	"context"
 	"fmt"
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
-	"log"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/cloudflare/cloudflare-go/v6"
+	"github.com/cloudflare/cloudflare-go/v6/option"
 )
 
+const (
+	dataDir    = "data"
+	dateLayout = "2006-01-02"
+)
+
+var brackets = []int{200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000}
+
 func main() {
-	dataDir := "data"
-	fileFormat := "top-%d-domains.csv"
-	brackets := []int{200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000}
-	domainsMap := make(map[string]int)
-	p := message.NewPrinter(language.English)
-	file, err := os.Create("result.txt")
+	if err := run(context.Background()); err != nil {
+		fmt.Fprintf(os.Stderr, "radar: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run(ctx context.Context) error {
+	date := time.Now().Format(dateLayout)
+	outputRoot := dataDir
+
+	outputDir := filepath.Join(outputRoot, date)
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		return fmt.Errorf("create output directory %s: %w", outputDir, err)
+	}
+
+	apiToken, err := cloudflareAPIToken(".env")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	defer file.Close()
 
-	// read each file
+	client := cloudflare.NewClient(option.WithAPIToken(apiToken))
 	for _, bracket := range brackets {
-		func(bracket int) {
-			currFileName := filepath.Join(dataDir, fmt.Sprintf(fileFormat, bracket))
-			fmt.Println("Reading file:", currFileName)
-			currFile, err := os.Open(currFileName)
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer currFile.Close()
-
-			reader := csv.NewReader(currFile)
-			// read the first row to ignore headers
-			_, err = reader.Read()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			records, err := reader.ReadAll()
-			for _, row := range records {
-				for _, field := range row {
-					// if not already in the map, then add it and write to file
-					if _, exists := domainsMap[field]; !exists {
-						domainsMap[field] = bracket
-						_, err := file.Write([]byte(p.Sprintf("%*d: %s\n", 7, bracket, field)))
-						if err != nil {
-							log.Fatal(err)
-						}
-					}
-
-				}
-			}
-		}(bracket)
+		if err := downloadTopDomains(ctx, client, outputDir, bracket); err != nil {
+			return err
+		}
 	}
+
+	return nil
+}
+
+func downloadTopDomains(ctx context.Context, client *cloudflare.Client, outputDir string, bracket int) error {
+	alias := fmt.Sprintf("ranking_top_%d", bracket)
+	body, err := client.Radar.Datasets.Get(ctx, alias)
+	if err != nil {
+		return fmt.Errorf("download %s: %w", alias, err)
+	}
+	if body == nil {
+		return fmt.Errorf("download %s: empty response", alias)
+	}
+
+	filename := fmt.Sprintf("top-%d-domains.csv", bracket)
+	path := filepath.Join(outputDir, filename)
+	if err := os.WriteFile(path, []byte(withoutHeader(*body)), 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+
+	fmt.Printf("downloaded %s\n", path)
+	return nil
+}
+
+func withoutHeader(csv string) string {
+	_, rest, _ := strings.Cut(csv, "\n")
+	return rest
+}
+
+func cloudflareAPIToken(path string) (string, error) {
+	const key = "CLOUDFLARE_API_TOKEN="
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("read %s: %w", path, err)
+	}
+	raw := strings.TrimSpace(string(data))
+	if !strings.HasPrefix(raw, key) {
+		return "", fmt.Errorf("%s must contain %s...", path, key)
+	}
+	token := strings.TrimPrefix(raw, key)
+	if token == "" {
+		return "", fmt.Errorf("%s must contain %s...", path, key)
+	}
+	return token, nil
 }
